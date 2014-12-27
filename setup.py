@@ -7,5 +7,5 @@ setup(name='pressure-sprites',
       author='Alpha',
       author_email='alpha@projectpokemon.org',
       license='MIT',
-      packages=['pressure_sprites'],
+      scripts=['scripts/generate_spritesheet'],
       zip_safe=True)

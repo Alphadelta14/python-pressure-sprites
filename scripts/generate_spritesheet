@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+
+import argparse
+import json
+
+from PIL import Image
+from pressure import Layout
+
+
+parser = argparse.ArgumentParser(description='Generate a spritesheet from '
+                                 'input image files')
+parser.add_argument('images', nargs='+', type=argparse.FileType('rb'),
+                    help='input image files')
+parser.add_argument('--output', '-o', type=argparse.FileType('wb'),
+                    default='sprites.png', help='destination file to '
+                    'write spritesheet to')
+parser.add_argument('--data', '-d', type=argparse.FileType('wb'),
+                    default='sprites.json', help='destination JSON file to '
+                    'write spritesheet metadata to')
+
+
+def main(argv):
+    args = parser.parse_args(argv)
+
+    layout = Layout(padding=0)
+    for imagef in args.images:
+        image = Image.open(imagef)
+        image.info['name'] = imagef.name
+        layout.add_children(layout.child(image, width=image.size[0],
+                                         height=image.size[1]))
+    sheet_width, sheet_height = layout.optimize()
+    spritesheet = Image.new('RGBA', (sheet_width, sheet_height))
+    meta = {
+        'app': 'pressure-sprites',
+        'version': '1.0',
+        'image': args.output.name,
+        'format': 'RGBA8888',
+        'size': {
+            'w': sheet_width,
+            'h': sheet_height
+        },
+        'scale': 1
+    }
+    frames = {}
+    for child in layout.children:
+        spritesheet.paste(child.element, (child.x, child.y))
+        frames[child.element.info['name']] = {
+            'frame': {
+                'x': child.x,
+                'y': child.y,
+                'w': child.width,
+                'h': child.height
+            },
+            'rotated': False,
+            'trimmed': False,
+            'spriteSourceSize': {
+                'x': 0,
+                'y': 0,
+                'w': child.width,
+                'h': child.height
+            },
+            'sourceSize': {
+                'w': child.width,
+                'h': child.height
+            }
+        }
+    spritesheet.save(args.output)
+    json.dump({'frames': frames, 'meta': meta}, args.data)
+
+if __name__ == '__main__':
+    import sys
+
+    main(sys.argv[1:])
