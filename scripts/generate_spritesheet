@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 
 from PIL import Image
 from pressure import Layout
@@ -9,13 +10,16 @@ from pressure import Layout
 
 parser = argparse.ArgumentParser(description='Generate a spritesheet from '
                                  'input image files')
-parser.add_argument('images', nargs='+', type=argparse.FileType('rb'),
-                    help='input image files')
+parser.add_argument('images', nargs='+',
+                    type=argparse.FileType('rb'),
+                    help='Input image files')
 parser.add_argument('--output', '-o', type=argparse.FileType('wb'),
-                    default='sprites.png', help='destination file to '
+                    default='sprites.png', help='Destination file to '
                     'write spritesheet to')
+parser.add_argument('--base-path', dest='base', default=None,
+                    help='Relative path for spritesheet. Defaults to data dir.')
 parser.add_argument('--data', '-d', type=argparse.FileType('wb'),
-                    default='sprites.json', help='destination JSON file to '
+                    default='sprites.json', help='Destination JSON file to '
                     'write spritesheet metadata to')
 
 
@@ -23,9 +27,11 @@ def main(argv):
     args = parser.parse_args(argv)
 
     layout = Layout(padding=0)
+    if args.base is None:
+        start_path = os.path.dirname(args.data.name)
     for imagef in args.images:
         image = Image.open(imagef)
-        image.info['name'] = imagef.name
+        image.info['name'] = os.path.split(imagef.name)[1]
         layout.add_children(layout.child(image, width=image.size[0],
                                          height=image.size[1]))
     sheet_width, sheet_height = layout.optimize()
@@ -33,7 +39,7 @@ def main(argv):
     meta = {
         'app': 'pressure-sprites',
         'version': '1.0',
-        'image': args.output.name,
+        'image': os.path.relpath(args.output.name, start_path),
         'format': 'RGBA8888',
         'size': {
             'w': sheet_width,
